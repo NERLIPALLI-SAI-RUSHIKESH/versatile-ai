@@ -114,7 +114,7 @@ export default function Home() {
             <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-200">
               <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
             </div>
-            <span className="font-bold text-slate-900 tracking-tight text-lg">Antigravity Orchestrator</span>
+            <span className="font-bold text-slate-900 tracking-tight text-lg">VersatileAI</span>
             <span className="text-[11px] text-slate-500 font-mono bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">v2.0</span>
           </div>
           <div className="flex items-center gap-2 text-xs text-emerald-600 font-mono bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full shadow-sm">
