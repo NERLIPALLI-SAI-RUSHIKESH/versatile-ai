@@ -10,14 +10,15 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](#)
 [![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](#)
 
-[Live Demo](https://versatile-ai-delta.vercel.app/) • [Report Bug](#) • [Request Feature](#)
+[Live Demo](https://versatile-ai-delta.vercel.app/) 
 
 </div>
 
 ---
 
 ## 📸 Dashboard
-*(Please save your screenshot as `screenshot.png` in the same folder to display it here)*
+<img width="2880" height="1704" alt="image" src="https://github.com/user-attachments/assets/ec4d9bf2-4bd3-4cd9-a6d2-90eccce45bc1" />
+
 
 ![VersatileAI Dashboard](./screenshot.png)
 
