@@ -17,10 +17,8 @@
 ---
 
 ## 📸 Dashboard
-<img width="2880" height="1704" alt="image" src="https://github.com/user-attachments/assets/ec4d9bf2-4bd3-4cd9-a6d2-90eccce45bc1" />
+<img width="2834" height="1436" alt="image" src="https://github.com/user-attachments/assets/c9294870-0b07-4377-b23d-a1afc7b6143a" />
 
-
-![VersatileAI Dashboard](./screenshot.png)
 
 ## 🌟 Overview
 
