@@ -1,54 +1,101 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-const AGENT_COLORS: Record<string, string> = {
-  Planner: "bg-blue-50 text-blue-600 border-blue-200",
-  Researcher: "bg-purple-50 text-purple-600 border-purple-200",
-  Coder: "bg-amber-50 text-amber-600 border-amber-200",
-  Verifier: "bg-cyan-50 text-cyan-600 border-cyan-200",
-  Critic: "bg-rose-50 text-rose-600 border-rose-200",
-  Finalizer: "bg-emerald-50 text-emerald-600 border-emerald-200",
-};
-
-const AGENT_ICONS: Record<string, string> = {
-  Planner: "🗺️",
-  Researcher: "🔬",
-  Coder: "✍️",
-  Verifier: "🔍",
-  Critic: "⚖️",
-  Finalizer: "✅",
+const AGENT_META: Record<string, { label: string; icon: string; color: string; badge: string }> = {
+  Strategist: {
+    label: "Strategist",
+    icon: "🗺️",
+    color: "from-blue-500/20 to-cyan-500/20 border-cyan-500/30 text-cyan-300",
+    badge: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
+  },
+  Researcher: {
+    label: "Researcher",
+    icon: "🔬",
+    color: "from-purple-500/20 to-indigo-500/20 border-purple-500/30 text-purple-300",
+    badge: "bg-purple-500/10 text-purple-400 border-purple-500/20"
+  },
+  Synthesizer: {
+    label: "Synthesizer",
+    icon: "✍️",
+    color: "from-amber-500/20 to-orange-500/20 border-amber-500/30 text-amber-300",
+    badge: "bg-amber-500/10 text-amber-400 border-amber-500/20"
+  },
+  Auditor: {
+    label: "Auditor",
+    icon: "⚖️",
+    color: "from-rose-500/20 to-pink-500/20 border-rose-500/30 text-rose-300",
+    badge: "bg-rose-500/10 text-rose-400 border-rose-500/20"
+  },
+  // Legacy aliases
+  Planner: {
+    label: "Strategist",
+    icon: "🗺️",
+    color: "from-blue-500/20 to-cyan-500/20 border-cyan-500/30 text-cyan-300",
+    badge: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
+  },
+  Coder: {
+    label: "Synthesizer",
+    icon: "✍️",
+    color: "from-amber-500/20 to-orange-500/20 border-amber-500/30 text-amber-300",
+    badge: "bg-amber-500/10 text-amber-400 border-amber-500/20"
+  },
+  Critic: {
+    label: "Auditor",
+    icon: "⚖️",
+    color: "from-rose-500/20 to-pink-500/20 border-rose-500/30 text-rose-300",
+    badge: "bg-rose-500/10 text-rose-400 border-rose-500/20"
+  }
 };
 
 export default function Home() {
   const [task, setTask] = useState("");
+  const [provider, setProvider] = useState("auto");
+  const [availableProviders, setAvailableProviders] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [auditTrail, setAuditTrail] = useState<any[]>([]);
   const [finalResult, setFinalResult] = useState<any>(null);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [showAuditorFeedback, setShowAuditorFeedback] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+  useEffect(() => {
+    fetch(`${apiUrl}/api/providers`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.providers) setAvailableProviders(data.providers);
+      })
+      .catch(() => {});
+  }, [apiUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!task.trim()) return;
     setLoading(true);
+    setErrorMsg(null);
     setAuditTrail([]);
     setFinalResult(null);
     setExpandedIndex(null);
+    setShowAuditorFeedback(false);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const response = await fetch(`${apiUrl}/api/run-task`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: task }),
+        body: JSON.stringify({ prompt: task, provider }),
       });
-      if (!response.body) throw new Error("No stream");
+
+      if (!response.body) throw new Error("No stream received from backend");
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
       let done = false;
+
       while (!done) {
         const { value, done: rd } = await reader.read();
         done = rd;
@@ -75,156 +122,249 @@ export default function Home() {
         }
       }
     } catch {
-      alert("Cannot connect to backend. Make sure Python server is running on port 8000.");
+      setErrorMsg("Cannot reach Python backend. Ensure `python main.py` is running on port 8000.");
       setLoading(false);
     }
+  };
+
+  const handleCopyMarkdown = () => {
+    if (!finalResult?.draft) return;
+    navigator.clipboard.writeText(finalResult.draft);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleExportMarkdown = () => {
+    if (!finalResult?.draft) return;
+    const blob = new Blob([finalResult.draft], { type: "text/markdown;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `versatile_ai_report_${Date.now()}.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
     <>
       <style>{`
-        body { background: #f8fafc; }
-        .prose h1,h2,h3 { color: #0f172a; margin-top: 1.5rem; margin-bottom: 0.75rem; font-weight: 700; }
-        .prose p { color: #334155; line-height: 1.8; }
-        .prose ul { color: #475569; padding-left: 1.5rem; }
+        body { background: #030712; color: #f3f4f6; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+        .prose h1, .prose h2, .prose h3 { color: #f9fafb; margin-top: 1.5rem; margin-bottom: 0.75rem; font-weight: 700; letter-spacing: -0.025em; }
+        .prose h1 { font-size: 1.6rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; }
+        .prose h2 { font-size: 1.3rem; }
+        .prose h3 { font-size: 1.1rem; }
+        .prose p { color: #d1d5db; line-height: 1.8; margin-bottom: 1rem; }
+        .prose ul, .prose ol { color: #d1d5db; padding-left: 1.5rem; margin-bottom: 1rem; }
         .prose li { margin-bottom: 0.4rem; }
-        .prose strong { color: #0f172a; font-weight: 600; }
-        .prose table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .prose thead tr { border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
-        .prose thead th { color: #475569; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 1rem; text-align: left; }
-        .prose tbody td { color: #334155; padding: 1rem; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
-        .prose tbody tr:hover td { background: #f8fafc; }
-        .prose blockquote { border-left: 4px solid #3b82f6; background: #eff6ff; padding: 1rem; color: #1e3a8a; margin: 1rem 0; border-radius: 0 8px 8px 0; }
-        .prose code { background: #f1f5f9; color: #0f172a; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.875em; border: 1px solid #e2e8f0; }
-        .prose pre { background: #0f172a; color: #e2e8f0; border-radius: 0.5rem; padding: 1.25rem; overflow-x: auto; }
+        .prose strong { color: #ffffff; font-weight: 600; }
+        .prose a { color: #38bdf8; text-decoration: underline; text-underline-offset: 3px; font-weight: 500; }
+        .prose a:hover { color: #7dd3fc; }
+        .prose table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(17, 24, 39, 0.7); border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
+        .prose thead tr { background: rgba(31, 41, 55, 0.8); border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .prose thead th { color: #9ca3af; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.85rem 1rem; text-align: left; }
+        .prose tbody td { color: #e5e7eb; padding: 0.85rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
+        .prose tbody tr:hover td { background: rgba(255,255,255,0.03); }
+        .prose blockquote { border-left: 3px solid #6366f1; background: rgba(99, 102, 241, 0.1); padding: 1rem; color: #c7d2fe; margin: 1.25rem 0; border-radius: 0 8px 8px 0; }
+        .prose code { background: rgba(255,255,255,0.08); color: #38bdf8; padding: 0.2rem 0.45rem; border-radius: 6px; font-size: 0.875em; font-family: monospace; }
+        .prose pre { background: #0b0f19; color: #e5e7eb; border-radius: 0.75rem; padding: 1.25rem; overflow-x: auto; border: 1px solid rgba(255,255,255,0.08); }
         .prose pre code { background: none; border: none; color: inherit; padding: 0; }
-        .prose hr { border-color: #e2e8f0; margin: 2rem 0; }
         
-        .scrollbar-thin::-webkit-scrollbar { width: 5px; }
-        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; }
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .scrollbar-dark::-webkit-scrollbar { width: 5px; }
+        .scrollbar-dark::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-dark::-webkit-scrollbar-thumb { background: #374151; border-radius: 5px; }
+        .scrollbar-dark::-webkit-scrollbar-thumb:hover { background: #4b5563; }
       `}</style>
 
-      <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
         
-        {/* Top Nav */}
-        <header className="border-b border-slate-200 px-8 py-4 flex items-center justify-between bg-white/80 backdrop-blur-xl sticky top-0 z-10 shadow-sm">
+        {/* Subtle Ambient Background Gradients */}
+        <div className="fixed top-0 left-1/4 w-96 h-96 bg-indigo-600/10 blur-[120px] pointer-events-none rounded-full"></div>
+        <div className="fixed bottom-0 right-1/4 w-96 h-96 bg-cyan-600/10 blur-[120px] pointer-events-none rounded-full"></div>
+
+        {/* Top Navigation */}
+        <header className="border-b border-slate-800/80 px-6 md:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4 bg-slate-900/60 backdrop-blur-xl sticky top-0 z-30">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-200">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 border border-white/20">
+              <span className="text-lg">⚡</span>
             </div>
-            <span className="font-bold text-slate-900 tracking-tight text-lg">VersatileAI</span>
-            <span className="text-[11px] text-slate-500 font-mono bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">v2.0</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold tracking-tight text-white text-lg">VersatileAI</span>
+                <span className="text-[10px] font-mono tracking-wider bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase">v2.1 Swarm</span>
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium">Autonomous Grounded Multi-Agent Verification</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-xs text-emerald-600 font-mono bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Groq LPU Online
+
+          <div className="flex items-center gap-3">
+            {/* Model Provider Selector */}
+            <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 rounded-xl px-2 py-1 shadow-inner">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pl-1.5 hidden sm:inline">Engine:</span>
+              <select
+                value={provider}
+                onChange={(e) => setProvider(e.target.value)}
+                disabled={loading}
+                className="text-xs font-semibold bg-slate-800 text-slate-200 border border-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:bg-slate-700/80 transition-all"
+              >
+                <option value="auto">⚡ Auto Routing (Groq + Nemotron)</option>
+                <option value="groq">⚡ Groq LPU (Ultra-Fast Free)</option>
+                <option value="openrouter">🌐 OpenRouter (Nemotron 3.5 Free)</option>
+                <option value="nvidia">🟢 NVIDIA Direct NIM</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs font-mono bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-3 py-1.5 rounded-full shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              100% Free Tier Active
+            </div>
           </div>
         </header>
 
-        <div className="flex flex-1 overflow-hidden">
+        {errorMsg && (
+          <div className="bg-rose-950/80 border-b border-rose-800 px-8 py-3 text-xs text-rose-300 flex items-center justify-between">
+            <span>⚠️ {errorMsg}</span>
+            <button onClick={() => setErrorMsg(null)} className="font-bold text-rose-200 hover:underline">Dismiss</button>
+          </div>
+        )}
+
+        <div className="flex flex-1 overflow-hidden relative z-10">
           
-          {/* LEFT PANEL: Agent logs */}
-          <aside className="w-80 xl:w-96 border-r border-slate-200 flex flex-col bg-white flex-shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-0">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Agent Pipeline</span>
-              {loading && <span className="text-[10px] text-indigo-500 font-mono animate-pulse font-semibold">streaming...</span>}
+          {/* LEFT PANEL: Live Agent Swarm Stream */}
+          <aside className="w-80 xl:w-96 border-r border-slate-800/80 flex flex-col bg-slate-900/40 backdrop-blur-md flex-shrink-0 z-10">
+            <div className="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/70">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Agent Reasoning Loop</span>
+              </div>
+              {loading && (
+                <span className="flex items-center gap-1.5 text-[11px] text-cyan-400 font-mono animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                  live stream
+                </span>
+              )}
             </div>
             
-            <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-3 bg-slate-50/30">
+            <div className="flex-1 overflow-y-auto scrollbar-dark p-4 space-y-3">
               {auditTrail.length === 0 && !loading ? (
-                <div className="text-center mt-16 text-slate-400 text-sm font-mono">
-                  <p className="text-4xl mb-3 opacity-50">🤖</p>
-                  <p className="font-semibold text-slate-500">System idle</p>
-                  <p className="text-xs mt-1 text-slate-400">Awaiting task initialization.</p>
+                <div className="text-center mt-20 text-slate-500 text-sm">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-center mx-auto mb-3 text-2xl">
+                    🤖
+                  </div>
+                  <p className="font-semibold text-slate-400">Swarm in Standby</p>
+                  <p className="text-xs mt-1 text-slate-600 max-w-xs mx-auto">Enter any prompt above to watch the 4 agents plan, search, draft, and audit in real-time.</p>
                 </div>
               ) : (
-                auditTrail.map((step, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setExpandedIndex(expandedIndex === i ? null : i)}
-                    className={`w-full text-left rounded-xl border transition-all duration-200 shadow-sm ${expandedIndex === i ? 'bg-white border-indigo-200 ring-2 ring-indigo-50' : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow'}`}
-                  >
-                    <div className="p-3.5 flex items-center gap-3">
-                      <span className="text-xl flex-shrink-0 bg-slate-50 w-10 h-10 flex items-center justify-center rounded-lg border border-slate-100">{AGENT_ICONS[step.agent] || "🔹"}</span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-bold text-slate-800 truncate">{step.agent}</span>
-                          <svg className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform ${expandedIndex === i ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                        </div>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${AGENT_COLORS[step.agent] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                          {step.action}
+                auditTrail.map((step, i) => {
+                  const meta = AGENT_META[step.agent] || { label: step.agent, icon: "🔹", color: "from-slate-500/20 border-slate-700 text-slate-300", badge: "bg-slate-800 text-slate-400 border-slate-700" };
+                  return (
+                    <div
+                      key={i}
+                      className={`w-full text-left rounded-xl border transition-all duration-200 bg-gradient-to-r ${meta.color} ${expandedIndex === i ? 'ring-1 ring-white/30 shadow-lg' : 'hover:border-slate-600'}`}
+                    >
+                      <button
+                        onClick={() => setExpandedIndex(expandedIndex === i ? null : i)}
+                        className="w-full p-3 flex items-center gap-3 text-left focus:outline-none"
+                      >
+                        <span className="text-xl flex-shrink-0 bg-slate-900/80 w-10 h-10 flex items-center justify-center rounded-lg border border-white/10 shadow-inner">
+                          {meta.icon}
                         </span>
-                      </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-bold text-white truncate">{meta.label}</span>
+                            {step.latency_ms && (
+                              <span className="text-[10px] font-mono text-slate-400 bg-slate-900/60 px-1.5 py-0.5 rounded border border-white/5">
+                                {step.latency_ms}ms
+                              </span>
+                            )}
+                          </div>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${meta.badge}`}>
+                            {step.action}
+                          </span>
+                        </div>
+                      </button>
+
+                      {expandedIndex === i && (
+                        <div className="px-3.5 pb-3.5 pt-1 border-t border-white/5">
+                          <p className="text-[12px] text-slate-300 font-mono leading-relaxed whitespace-pre-wrap break-words max-h-60 overflow-y-auto scrollbar-dark bg-slate-950/80 p-2.5 rounded-lg border border-white/5">
+                            {step.content}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    {expandedIndex === i && (
-                      <div className="px-4 pb-4 pt-2 border-t border-slate-100 bg-slate-50/50 rounded-b-xl">
-                        <p className="text-[12px] text-slate-600 font-mono leading-relaxed whitespace-pre-wrap break-words max-h-60 overflow-y-auto scrollbar-thin mt-2">
-                          {step.content}
-                        </p>
-                      </div>
-                    )}
-                  </button>
-                ))
+                  );
+                })
               )}
+
               {loading && (
-                <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl border border-indigo-200 bg-indigo-50 shadow-sm">
-                  <svg className="animate-spin w-5 h-5 text-indigo-600 flex-shrink-0" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  <span className="text-xs text-indigo-700 font-bold font-mono tracking-wide">Agent processing...</span>
+                <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl border border-indigo-500/40 bg-indigo-950/30 text-indigo-300">
+                  <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
+                  <span className="text-xs font-mono font-medium tracking-wide">Next Agent Reasoning...</span>
                 </div>
               )}
             </div>
           </aside>
 
-          {/* RIGHT PANEL: Main content */}
-          <main className="flex-1 flex flex-col overflow-hidden bg-slate-50 relative">
-            {/* Subtle background pattern */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
-
-            {/* Input bar */}
-            <div className="px-8 py-6 border-b border-slate-200 bg-white/80 backdrop-blur-md z-10 shadow-sm">
-              <form onSubmit={handleSubmit} className="flex gap-3 items-center max-w-5xl mx-auto">
-                <div className="flex-1 flex items-center gap-3 bg-white border border-slate-300 rounded-xl px-5 py-3.5 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 transition-all shadow-sm">
-                  <svg className="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+          {/* RIGHT PANEL: Search Input & Main Output */}
+          <main className="flex-1 flex flex-col overflow-hidden bg-slate-950 relative">
+            
+            {/* Search Input Bar */}
+            <div className="px-6 md:px-10 py-6 border-b border-slate-800/80 bg-slate-900/40 backdrop-blur-xl z-20">
+              <form onSubmit={handleSubmit} className="flex gap-3 items-center max-w-4xl mx-auto">
+                <div className="flex-1 flex items-center gap-3 bg-slate-900/90 border border-slate-700/80 rounded-2xl px-5 py-3.5 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/30 transition-all shadow-xl shadow-black/40">
+                  <span className="text-slate-400 text-lg">💬</span>
                   <input
                     type="text"
                     value={task}
                     onChange={e => setTask(e.target.value)}
-                    placeholder="Describe your task for the agent swarm..."
-                    className="flex-1 bg-transparent text-slate-800 placeholder-slate-400 focus:outline-none font-medium text-base"
+                    placeholder="Enter any complex question for verified, grounded multi-agent research..."
+                    className="flex-1 bg-transparent text-white placeholder-slate-500 focus:outline-none font-medium text-base"
                     disabled={loading}
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={loading || !task.trim()}
-                  className="bg-slate-900 hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-8 py-3.5 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-slate-200 flex-shrink-0"
+                  className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold px-7 py-3.5 rounded-2xl transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/30 flex-shrink-0 active:scale-95"
                 >
                   {loading ? (
-                    <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   ) : (
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    <span>🚀</span>
                   )}
-                  {loading ? "Running" : "Deploy Swarm"}
+                  {loading ? "Verifying..." : "Run Swarm"}
                 </button>
               </form>
             </div>
 
-            {/* Output area */}
-            <div className="flex-1 overflow-y-auto scrollbar-thin px-8 py-10 z-10">
+            {/* Main Output / Results Area */}
+            <div className="flex-1 overflow-y-auto scrollbar-dark px-6 md:px-10 py-8 z-10">
+              
               {!finalResult && !loading && (
-                <div className="h-full flex flex-col items-center justify-center text-center max-w-xl mx-auto bg-white p-12 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/40">
-                  <div className="w-20 h-20 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mb-6 shadow-sm">
-                    <svg className="w-10 h-10 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+                <div className="h-full flex flex-col items-center justify-center text-center max-w-2xl mx-auto py-12">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500/20 to-cyan-500/20 border border-indigo-500/30 flex items-center justify-center mb-6 text-3xl shadow-xl shadow-indigo-500/10">
+                    🛡️
                   </div>
-                  <h2 className="text-2xl font-extrabold text-slate-900 mb-3 tracking-tight">Multi-Agent Verification Engine</h2>
-                  <p className="text-base text-slate-500 leading-relaxed font-medium">Enter a complex task above. A swarm of specialized AI agents will plan, research, write, verify, and critique the output before delivering a final result.</p>
+                  <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Zero-Hallucination Multi-Agent Verification</h2>
+                  <p className="text-sm text-slate-400 leading-relaxed max-w-lg mb-8">
+                    Every answer is deconstructed by a <strong className="text-cyan-400">Strategist</strong>, grounded in live web sources by a <strong className="text-purple-400">Researcher</strong>, synthesized by a <strong className="text-amber-400">Writer</strong>, and audited for factual truth by an <strong className="text-rose-400">Auditor</strong>.
+                  </p>
                   
-                  <div className="mt-10 grid grid-cols-2 gap-3 w-full">
-                    {["Plan a trip to Goa under ₹10,000", "Explain Quantum Computing simply", "Write a Python web scraper", "Compare Next.js vs React"].map(s => (
-                      <button key={s} onClick={() => setTask(s)} className="text-sm font-medium text-left text-slate-600 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200 hover:border-indigo-200 rounded-xl p-4 transition-all shadow-sm">
-                        {s}
+                  {/* Quick-Prompt Pills */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                    {[
+                      "Compare real apple vs plastic toy apple",
+                      "Latest breakthroughs in Quantum Computing",
+                      "Why does SQL scale vertically while NoSQL scales horizontally?",
+                      "How do black hole event horizons work simply?"
+                    ].map(s => (
+                      <button
+                        key={s}
+                        onClick={() => setTask(s)}
+                        className="text-xs font-semibold text-left text-slate-300 bg-slate-900/70 hover:bg-slate-800/80 hover:text-white border border-slate-800 hover:border-slate-700 rounded-xl p-3.5 transition-all shadow-md group flex items-start gap-2.5"
+                      >
+                        <span className="text-indigo-400 group-hover:scale-110 transition-transform">▸</span>
+                        <span>{s}</span>
                       </button>
                     ))}
                   </div>
@@ -233,30 +373,72 @@ export default function Home() {
 
               {loading && auditTrail.length === 0 && (
                 <div className="h-full flex items-center justify-center">
-                  <div className="text-center bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-                    <div className="flex gap-2 justify-center mb-5">
-                      {[0,1,2].map(i => <div key={i} className="w-3 h-3 rounded-full bg-indigo-500 animate-bounce" style={{animationDelay:`${i*0.15}s`}}></div>)}
+                  <div className="text-center bg-slate-900/60 p-8 rounded-2xl border border-slate-800 backdrop-blur-xl">
+                    <div className="flex gap-2 justify-center mb-4">
+                      {[0, 1, 2].map(i => (
+                        <div key={i} className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }}></div>
+                      ))}
                     </div>
-                    <p className="text-sm text-slate-500 font-mono font-bold tracking-widest uppercase">Initializing Swarm...</p>
+                    <p className="text-xs text-slate-400 font-mono tracking-widest uppercase font-bold">Activating Multi-Model Swarm...</p>
                   </div>
                 </div>
               )}
 
               {finalResult && (
-                <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 bg-white p-8 md:p-12 rounded-3xl border border-slate-200 shadow-2xl shadow-slate-200/50">
-                  {/* Status Bar */}
-                  <div className={`flex items-center justify-between px-6 py-4 rounded-xl mb-8 border shadow-sm ${finalResult.is_valid ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
-                    <div className={`flex items-center gap-3 text-sm font-bold ${finalResult.is_valid ? 'text-emerald-700' : 'text-rose-700'}`}>
-                      {finalResult.is_valid ? (
-                        <><svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Output Verified &amp; Approved</>
-                      ) : (
-                        <><svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>Flagged by Critic (See Warning)</>
-                      )}
+                <div className="max-w-4xl mx-auto bg-slate-900/50 backdrop-blur-xl p-6 md:p-10 rounded-3xl border border-slate-800 shadow-2xl">
+                  
+                  {/* Top Status Header */}
+                  <div className={`flex flex-wrap items-center justify-between gap-4 px-5 py-3.5 rounded-2xl mb-6 border ${finalResult.is_valid ? 'bg-emerald-950/40 border-emerald-500/30' : 'bg-rose-950/40 border-rose-500/30'}`}>
+                    <div className={`flex items-center gap-2.5 text-sm font-extrabold ${finalResult.is_valid ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      <span>{finalResult.is_valid ? "✅" : "⚠️"}</span>
+                      <span>{finalResult.is_valid ? "Audited & Factually Verified" : "Auditor Flagged Edge-Cases"}</span>
                     </div>
-                    <span className="text-xs text-slate-500 font-mono bg-white px-3 py-1 rounded-md border border-slate-200/50">{finalResult.loop_count} refinement loops</span>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {finalResult.metrics?.total_time_s && (
+                        <span className="text-xs text-slate-300 font-mono bg-slate-950/80 px-2.5 py-1 rounded-lg border border-white/10">
+                          ⏱️ {finalResult.metrics.total_time_s}s
+                        </span>
+                      )}
+                      <span className="text-xs font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-1 rounded-lg font-bold">
+                        Score: {finalResult.quality_score || 9}/10
+                      </span>
+                      <button
+                        onClick={handleCopyMarkdown}
+                        className="text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1 rounded-lg transition-all flex items-center gap-1.5"
+                      >
+                        {copied ? "✓ Copied!" : "📋 Copy"}
+                      </button>
+                      <button
+                        onClick={handleExportMarkdown}
+                        className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 shadow-md shadow-indigo-600/30"
+                      >
+                        📥 Export .md
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Rendered Markdown Output */}
+                  {/* Auditor Notes Accordion */}
+                  {finalResult.feedback && (
+                    <div className="mb-6 border border-slate-800 rounded-xl overflow-hidden bg-slate-950/60">
+                      <button
+                        onClick={() => setShowAuditorFeedback(!showAuditorFeedback)}
+                        className="w-full text-left px-4 py-2.5 flex items-center justify-between text-xs font-bold text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 transition-colors"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>⚖️</span> Auditor Verification Findings &amp; Critique
+                        </span>
+                        <span>{showAuditorFeedback ? "▲ Hide" : "▼ Inspect"}</span>
+                      </button>
+                      {showAuditorFeedback && (
+                        <div className="px-4 py-3 border-t border-slate-800 text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed bg-black/40">
+                          {finalResult.feedback}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Rendered Verified Output */}
                   <div className="prose max-w-none">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {finalResult.draft}
