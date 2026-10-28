@@ -1,138 +1,321 @@
 <div align="center">
 
-# 🤖 VersatileAI
-### Autonomous Multi-Agent Verification & Synthesis Platform
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=32&pause=1000&color=6366F1&center=true&vCenter=true&width=700&lines=VersatileAI+%F0%9F%A4%96;4-Agent+Multi-Model+AI+Platform;Plan+%E2%86%92+Research+%E2%86%92+Synthesize+%E2%86%92+Verify" alt="Typing SVG" />
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org/)
-[![Groq](https://img.shields.io/badge/Groq-LPU_Inference-F05A28?style=for-the-badge)](https://groq.com/)
-[![NVIDIA](https://img.shields.io/badge/NVIDIA-Nemotron_70B-76B900?style=for-the-badge&logo=nvidia&logoColor=white)](https://build.nvidia.com/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+<br/>
 
-**[🌐 Live Demo on Vercel](https://versatile-ai-delta.vercel.app/)** • **[⚡ Backend on Render](https://versatile-ai-backend.onrender.com)**
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-Vercel-black?style=for-the-badge&logo=vercel)](https://versatile-ai-delta.vercel.app/)
+[![Backend](https://img.shields.io/badge/⚡_Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://versatile-ai.onrender.com)
+[![GitHub Stars](https://img.shields.io/github/stars/NERLIPALLI-SAI-RUSHIKESH/versatile-ai?style=for-the-badge&color=FFD700&logo=github)](https://github.com/NERLIPALLI-SAI-RUSHIKESH/versatile-ai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-6366F1?style=for-the-badge)](LICENSE)
+
+<br/>
+
+[![Python](https://img.shields.io/badge/Python_3.11-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org/)
+[![Next.js](https://img.shields.io/badge/Next.js_15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![Flask](https://img.shields.io/badge/Flask-000000?style=flat-square&logo=flask)](https://flask.palletsprojects.com/)
+[![Groq](https://img.shields.io/badge/Groq_LPU-F05A28?style=flat-square)](https://groq.com/)
+[![NVIDIA](https://img.shields.io/badge/NVIDIA_Nemotron-76B900?style=flat-square&logo=nvidia&logoColor=white)](https://build.nvidia.com/)
+[![OpenRouter](https://img.shields.io/badge/OpenRouter-6366F1?style=flat-square)](https://openrouter.ai/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docker.com/)
+
+<br/>
+
+> **Single LLMs hallucinate. VersatileAI doesn't.**
+> 
+> Four specialized AI agents — each with a distinct role — collaborate in a pipeline to plan, research live web data, synthesize, and fact-check every response before you see it.
 
 </div>
 
 ---
 
-## 🌟 Overview
+## 🎯 The Problem We Solve
 
-Single-agent LLMs frequently hallucinate facts and cannot verify their own output. **VersatileAI** solves this by orchestrating a distributed swarm of **4 specialized AI agents** that plan, ground in live web data, synthesize, and objectively audit responses before delivering the final result.
-
-Every answer is **grounded in real-time DuckDuckGo web search results** with clickable source citations and evaluated through an automated **Auditor self-correction loop**.
+| ❌ Normal AI Chatbot | ✅ VersatileAI |
+|---|---|
+| One model does everything | 4 specialized agents, each expert at one job |
+| Hallucinations with no check | Auditor agent scores & flags every response |
+| No sources, no citations | Live DuckDuckGo web search with source URLs |
+| You trust blindly | You see the full reasoning chain + latency |
+| Black box | Fully transparent agent-by-agent pipeline |
 
 ---
 
-## 🧠 Multi-Agent Pipeline Architecture
+## 🧠 4-Agent Pipeline Architecture
 
-```mermaid
-graph TD
-    User([User Prompt]) --> S[1. 🗺️ Strategist Agent]
-    S -->|Milestones & Search Queries| R[2. 🔬 Grounded Researcher]
-    R -->|Live DuckDuckGo Citations| W[3. ✍️ Synthesizer Agent]
-    W -->|Structured Draft| A[4. ⚖️ Auditor & Evaluator]
-    
-    A -- "REVISE: Actionable Feedback" --> W
-    A -- "APPROVED: Verification Score & Audit" --> Out([Final Verified Output + Telemetry])
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        USER PROMPT                              │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+                      ▼
+        ┌─────────────────────────┐
+        │  1. 🗺️  STRATEGIST      │  ← Groq gpt-oss-20b (fast)
+        │  Decomposes query into  │
+        │  milestones + search    │
+        │  queries                │
+        └────────────┬────────────┘
+                     │  search queries
+                     ▼
+        ┌─────────────────────────┐
+        │  2. 🔬  RESEARCHER      │  ← DuckDuckGo Live Search
+        │  Fetches real-time web  │
+        │  citations & snippets   │
+        └────────────┬────────────┘
+                     │  grounded facts + URLs
+                     ▼
+        ┌─────────────────────────┐
+        │  3. ✍️  SYNTHESIZER     │  ← Groq gpt-oss-120b (heavy)
+        │  Writes structured      │
+        │  markdown report with   │
+        │  inline citations       │
+        └────────────┬────────────┘
+                     │  draft report
+                     ▼
+        ┌─────────────────────────┐
+        │  4. ⚖️  AUDITOR         │  ← OpenRouter Nemotron (free)
+        │  Fact-checks, scores    │
+        │  quality 0-10, flags    │
+        │  hallucinations         │
+        └────────────┬────────────┘
+                     │  APPROVED ✅ / REVISE ↩️
+                     ▼
+        ┌─────────────────────────┐
+        │   FINAL VERIFIED        │
+        │   RESPONSE + TELEMETRY  │
+        │   (score, latency, src) │
+        └─────────────────────────┘
 ```
 
-### Agent Roles:
-1. **🗺️ Strategist Agent:** Decomposes complex queries into milestones and formulates targeted web search queries *(Groq Llama 3.1 8B)*.
-2. **🔬 Grounded Researcher:** Queries live web data via DuckDuckGo, extracting verified snippets and source URLs.
-3. **✍️ Synthesizer Agent:** Drafts comprehensive, structured responses citing web sources in clean Markdown *(Groq Llama 3.3 70B)*.
-4. **⚖️ Auditor Agent:** Strict evaluator that checks facts against sources, detects logic flaws, scores quality (1–10), and triggers revisions if necessary *(NVIDIA Nemotron 70B)*.
+---
+
+## ⚡ Free Multi-Model Gateway
+
+Built with a **Universal Model Router** that auto-cascades across 100% free providers with failover:
+
+| # | Provider | Model | Speed | Strengths |
+|---|---|---|---|---|
+| 1 | **Groq Cloud** | `gpt-oss-20b` + `gpt-oss-120b` | ⚡ Sub-second LPU | Planning + heavy synthesis |
+| 2 | **OpenRouter** | `nvidia/nemotron-3.5-lightning:free` | 🚀 Fast | Fact auditing, zero cost |
+| 3 | **NVIDIA NIM** | `llama-3.1-nemotron-70b` | 🔥 Powerful | Backup heavy reasoning |
+| 4 | **Google Gemini** | `gemini-2.0-flash` | ⚡ Fast | If valid key provided |
+
+> **Zero paid API calls. Ever.** Every model is on a free tier. The `:free` tag is enforced in code as a hard guardrail.
 
 ---
 
-## ⚡ Universal Free Multi-Model Gateway
+## 🖥️ Screenshots
 
-VersatileAI is built with a dynamic **Model Router** that cascades across 100% free model providers with automatic failover:
+<div align="center">
 
-| Provider | Model | Free Tier Details |
-| :--- | :--- | :--- |
-| **Groq Cloud** | `llama-3.3-70b-versatile` & `llama-3.1-8b-instant` | Blazing-fast sub-second LPU inference |
-| **NVIDIA Direct NIM** | `nvidia/llama-3.1-nemotron-70b-instruct` | 1,000 free GPU credits on [build.nvidia.com](https://build.nvidia.com) |
-| **OpenRouter** | Strictly `:free` models (`nemotron:free`, `llama-3.3:free`) | Zero pay-per-token risk |
-| **Google Gemini** | `gemini-2.0-flash` | Free tier via Google AI Studio |
+| 4-Agent Pipeline Live View | Dark Glassmorphism UI |
+|---|---|
+| Agents light up in real-time with latency badges | Full dark mode with ambient gradients |
+
+</div>
 
 ---
 
-## 🚀 Quick Start (Local Development)
+## 🚀 Quick Start
 
 ### Prerequisites
-* Python 3.11+
-* Node.js 18+
+- Python 3.11+  
+- Node.js 18+
 
-### 1. Clone & Set Up Backend
+### 1. Clone the repo
+```bash
+git clone https://github.com/NERLIPALLI-SAI-RUSHIKESH/versatile-ai.git
+cd versatile-ai
+```
+
+### 2. Backend Setup
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
-Copy `.env.example` or create a `.env` file inside `backend/`:
+
+Create `backend/.env`:
 ```env
-GROQ_API_KEY=gsk_your_groq_key
-NVIDIA_API_KEY=nvapi_your_nvidia_key
-OPENROUTER_API_KEY=sk-or-v1_your_openrouter_key
-GEMINI_API_KEY=your_gemini_key
+GROQ_API_KEY=gsk_your_groq_key_here
+OPENROUTER_API_KEY=sk-or-v1_your_openrouter_key_here
+NVIDIA_API_KEY=nvapi_your_nvidia_key_here
 PORT=8000
 ```
-Start the backend server:
+
+**Get free API keys:**
+- 🟠 Groq → https://console.groq.com (free, no credit card)
+- 🟣 OpenRouter → https://openrouter.ai (free tier, no credit card)
+- 🟢 NVIDIA → https://build.nvidia.com (1000 free credits)
+
+Start the server:
 ```bash
 python main.py
 ```
-*API running at `http://localhost:8000`.*
+Backend running at `http://localhost:8000` ✅
 
-### 2. Set Up Frontend
+### 3. Frontend Setup
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-*Visit `http://localhost:3000`.*
+Open `http://localhost:3000` ✅
 
----
-
-## 🐳 Docker Deployment
-
-Run both frontend and backend with a single command:
+### 4. Docker (Full Stack)
 ```bash
 docker compose up --build
 ```
 
 ---
 
-## 🧪 Running Automated Tests
+## 🧪 Testing
 
-Run the backend unit test suite:
+Run the full backend test suite (8 tests):
 ```bash
 cd backend
-python -m unittest test_agent.py
+python -m unittest test_agent.py -v
 ```
-*Tests cover model provider initialization, search tool fallbacks, agent state transitions, and infinite loop safeguards.*
+
+Expected output:
+```
+test_agent_pipeline_structure ... ok
+test_auditor_node ... ok
+test_groq_client_init ... ok
+test_infinite_loop_safeguard ... ok
+test_model_router_fallback ... ok
+test_openrouter_client_init ... ok
+test_researcher_node ... ok
+test_strategist_node ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.XXXs
+OK
+```
 
 ---
 
 ## 📡 API Reference
 
 ### `POST /api/run-task`
-Streams multi-agent reasoning events via Server-Sent Events (SSE).
-* **Body:**
-  ```json
-  {
-    "prompt": "Compare SQL vs NoSQL databases",
-    "provider": "auto"
-  }
-  ```
-* **Event Stream (`text/event-stream`):**
-  * `status: "running"`: Real-time agent thought & latency.
-  * `status: "completed"`: Final verified Markdown, Auditor score, and telemetry.
+Streams multi-agent reasoning via **Server-Sent Events (SSE)**.
+
+```bash
+curl -X POST http://localhost:8000/api/run-task \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Latest AI breakthroughs 2024", "provider": "auto"}'
+```
+
+**Request body:**
+```json
+{
+  "prompt": "Your question here",
+  "provider": "auto"
+}
+```
+`provider` options: `auto` | `groq` | `openrouter` | `nvidia`
+
+**Response stream (`text/event-stream`):**
+```json
+{"status": "running", "agent": "strategist", "output": "...", "latency_ms": 412}
+{"status": "running", "agent": "researcher", "output": "...", "latency_ms": 850}
+{"status": "running", "agent": "synthesizer", "output": "...", "latency_ms": 2100}
+{"status": "completed", "agent": "auditor", "score": 9, "verdict": "APPROVED", "latency_ms": 1800}
+```
 
 ### `GET /api/providers`
-Returns list of currently active model providers in the environment.
+Returns active model providers.
+
+```json
+{
+  "providers": ["groq", "openrouter"],
+  "count": 2
+}
+```
+
+---
+
+## 🗂️ Project Structure
+
+```
+versatile-ai/
+├── backend/
+│   ├── main.py           # Flask server + SSE endpoints
+│   ├── agent.py          # 4-agent LangGraph pipeline
+│   ├── providers.py      # Universal multi-model gateway
+│   ├── tools.py          # DuckDuckGo live search tool
+│   ├── test_agent.py     # 8 unit tests (all passing ✅)
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/
+│   ├── src/app/
+│   │   └── page.tsx      # Main UI — dark glassmorphism
+│   ├── package.json
+│   └── Dockerfile
+├── .github/
+│   └── workflows/
+│       └── ci.yml        # GitHub Actions CI pipeline
+├── docker-compose.yml
+└── README.md
+```
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Frontend** | Next.js 15, TypeScript, Tailwind CSS |
+| **Backend** | Python 3.11, Flask, LangGraph |
+| **AI Orchestration** | LangGraph state machine (4-node pipeline) |
+| **LLM Providers** | Groq Cloud, OpenRouter, NVIDIA NIM |
+| **Web Grounding** | DuckDuckGo Search API (real-time citations) |
+| **Streaming** | Server-Sent Events (SSE) |
+| **Deployment** | Vercel (frontend) + Render (backend) |
+| **CI/CD** | GitHub Actions |
+| **Containerization** | Docker + Docker Compose |
+
+---
+
+## 🌐 Deployment
+
+| Service | Platform | URL |
+|---|---|---|
+| Frontend | Vercel | https://versatile-ai-delta.vercel.app/ |
+| Backend | Render | https://versatile-ai.onrender.com |
+
+### Environment Variables
+
+**Render (Backend):**
+```
+GROQ_API_KEY=...
+OPENROUTER_API_KEY=...
+NVIDIA_API_KEY=...
+PORT=8000
+```
+
+**Vercel (Frontend):**
+```
+NEXT_PUBLIC_API_URL=https://your-render-url.onrender.com
+```
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repo
+2. Create a branch: `git checkout -b feature/your-feature`
+3. Commit: `git commit -m "feat: add your feature"`
+4. Push: `git push origin feature/your-feature`
+5. Open a Pull Request
 
 ---
 
 <div align="center">
-Built with ❤️ for High-Reliability AI Verification
+
+**Built for MBU Hackathon 2024 — by Nerlipalli Sai Rushikesh**
+
+⭐ Star this repo if you found it useful!
+
+[![GitHub](https://img.shields.io/badge/GitHub-NERLIPALLI--SAI--RUSHIKESH-181717?style=for-the-badge&logo=github)](https://github.com/NERLIPALLI-SAI-RUSHIKESH)
+
 </div>
